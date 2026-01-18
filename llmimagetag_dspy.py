@@ -331,7 +331,7 @@ def configure_lm(
     api_base: str | None,
     api_key: str | None,
     temperature: float,
-    max_tokens: int,
+    max_tokens: int | None,
     request_timeout: int,
     configure_global: bool = True,
 ) -> dspy.LM:
@@ -350,7 +350,7 @@ def configure_lm(
     except Exception:
         pass
 
-    lm = dspy.LM(
+    lm_kwargs = dict(
         model=model,
         model_type="chat",
         temperature=temperature,
@@ -359,9 +359,10 @@ def configure_lm(
         cache=False,
         launch_kwargs={'timeout': 14400},
         timeout=request_timeout,
-        # Higher cap to avoid truncation warnings with proposer prompts
-        max_tokens=max_tokens,
     )
+    if max_tokens and max_tokens > 0:
+        lm_kwargs["max_tokens"] = max_tokens
+    lm = dspy.LM(**lm_kwargs)
     lm = SerializedLM(lm)
     if configure_global:
         dspy.settings.configure(lm=lm, num_threads=1)
@@ -466,7 +467,7 @@ def optimize_prompt(
     rounds: int,
     candidates_per_round: int,
     lm_temperature: float,
-    max_tokens: int,
+    max_tokens: int | None,
     request_timeout: int,
     show_think: bool,
 ) -> str:
@@ -592,7 +593,7 @@ def main():
     parser.add_argument("--rounds", type=int, default=2, help="Optimization rounds.")
     parser.add_argument("--candidates", type=int, default=3, help="Candidates per round.")
     parser.add_argument("--lm-temperature", type=float, default=1.0, help="LM temperature for proposing/eval.")
-    parser.add_argument("--max-tokens", type=int, default=8192, help="Max tokens for LM completions.")
+    parser.add_argument("--max-tokens", type=int, default=0, help="Max tokens for LM completions; set 0 to use the provider default.")
     parser.add_argument("--request-timeout", type=int, default=14400, help="Request timeout in seconds.")
     parser.add_argument("--show-think", action="store_true", help="Print <think>...</think> blocks from LM outputs.")
     parser.add_argument("--out", default="optimized_prompt.txt", help="File to write the optimized prompt.")
